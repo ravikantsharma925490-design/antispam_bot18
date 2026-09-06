@@ -1,6 +1,7 @@
 from threading import Thread
 
 from flask import Flask
+from waitress import serve
 
 import config
 
@@ -13,9 +14,10 @@ def home():
 
 
 def _run():
-    # use_reloader=False is important - without it Flask tries to spawn a
-    # second process which breaks things when run inside a thread.
-    _app.run(host="0.0.0.0", port=config.PORT, use_reloader=False)
+    # waitress is a production-grade WSGI server (unlike Flask's built-in
+    # dev server), so no "development server" warning and it's safe to run
+    # like this in a background thread alongside the bot.
+    serve(_app, host="0.0.0.0", port=config.PORT)
 
 
 def keep_alive():
