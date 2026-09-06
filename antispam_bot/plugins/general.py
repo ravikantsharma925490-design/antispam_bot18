@@ -1,10 +1,10 @@
 from pyrogram import Client, filters, enums
 from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-
+ 
 import config
 from storage import get_group_settings
 from .helpers import get_missing_join_buttons, is_admin
-
+ 
 START_TEXT = (
     "👋 <b>Hey! I'm an Anti-Spam bot.</b>\n\n"
     "I protect your Telegram groups from spam links, flooding, bad words, "
@@ -12,21 +12,19 @@ START_TEXT = (
     "<b>How to set me up:</b>\n"
     "1️⃣ Add me to your group\n"
     "2️⃣ Make me an <b>Admin</b> (with Delete Messages + Restrict Members + Ban Users)\n"
-    "3️⃣ In the group, send <code>/start</code> (as an admin) to confirm I'm active\n"
-    "4️⃣ Turn on the features you want, e.g.:\n"
-    "   • <code>/antilink on</code> — block links/@usernames from non-admins\n"
-    "   • <code>/antiflood on</code> — auto-mute users spamming messages\n"
-    "   • <code>/captcha on</code> — verify new members are human\n\n"
-    "Send <code>/help</code> anytime to see every command."
+    "3️⃣ In the group, send <code>/set</code> (as an admin) — this turns ON all "
+    "protections at once (anti-link, anti-flood, bad-words, captcha, welcome)\n\n"
+    "Send <code>/help</code> anytime to see every command, or <code>/settings</code> "
+    "to check what's currently enabled."
 )
-
-
+ 
+ 
 def _join_prompt_markup(missing_buttons):
     rows = [[btn] for btn in missing_buttons]
     rows.append([InlineKeyboardButton("♻️ Try Again", callback_data="check_join")])
     return InlineKeyboardMarkup(rows)
-
-
+ 
+ 
 @Client.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message: Message):
     missing = await get_missing_join_buttons(client, message.from_user.id)
@@ -37,10 +35,10 @@ async def start_cmd(client, message: Message):
             reply_markup=_join_prompt_markup(missing),
             parse_mode=enums.ParseMode.HTML,
         )
-
+ 
     await message.reply_text(START_TEXT, parse_mode=enums.ParseMode.HTML)
-
-
+ 
+ 
 @Client.on_callback_query(filters.regex("^check_join$"))
 async def check_join_callback(client, callback_query: CallbackQuery):
     missing = await get_missing_join_buttons(client, callback_query.from_user.id)
@@ -52,31 +50,32 @@ async def check_join_callback(client, callback_query: CallbackQuery):
         return await callback_query.answer(
             "You still haven't joined everything required.", show_alert=True
         )
-
+ 
     await callback_query.answer("✅ Verified!")
     await callback_query.message.edit_text(START_TEXT, parse_mode=enums.ParseMode.HTML)
-
-
+ 
+ 
 @Client.on_message(filters.command("start") & filters.group)
 async def group_start_cmd(client, message: Message):
     if not message.from_user:
         return await message.reply_text("Anonymous admins can't use this command.")
-
+ 
     if not await is_admin(client, message.chat.id, message.from_user.id):
         return await message.reply_text("⚠️ Only group admins can use /start in a group.")
-
+ 
     await message.reply_text(
         f"✅ I'm active in <b>{message.chat.title}</b>!\n\n"
-        "Use /help to see all moderation commands, or /settings to view what's "
-        "currently enabled for this group.",
+        "Use <code>/set</code> to turn ON all protections at once, or /help to "
+        "see individual commands and /settings to view what's currently enabled.",
         parse_mode=enums.ParseMode.HTML,
     )
-
-
+ 
+ 
 @Client.on_message(filters.command("help"))
 async def help_cmd(client, message: Message):
     await message.reply_text(
         "<b>📖 Commands</b>\n\n"
+        "<code>/set</code> — turn ON all protections at once (recommended quick setup)\n\n"
         "<u>Anti-Spam</u>\n"
         "<code>/antilink on|off</code> — delete links/@usernames from non-admins\n"
         "<code>/antiflood on|off</code> — auto-mute users spamming messages\n"
@@ -98,8 +97,8 @@ async def help_cmd(client, message: Message):
         "All commands (except /start, /help) must be used by a group admin.",
         parse_mode=enums.ParseMode.HTML,
     )
-
-
+ 
+ 
 @Client.on_message(filters.command("settings") & filters.group)
 async def show_settings(client, message: Message):
     s = get_group_settings(message.chat.id)
@@ -121,3 +120,4 @@ async def show_settings(client, message: Message):
         f"Captcha verification: {captcha}",
         parse_mode=enums.ParseMode.HTML,
     )
+ 
